@@ -21,13 +21,25 @@ const MIN_BOARD_CELL_W = 12;
 
 const COLORS = [
   "#0b1533",
-  "#61d2ff",
-  "#7cff8f",
-  "#ffcf61",
-  "#ff6fbd",
-  "#d97bff",
-  "#f66b6b",
-  "#77a5ff",
+  "#4dd8ff",
+  "#4dffd5",
+  "#4cff7f",
+  "#c6ff4d",
+  "#ffcf5d",
+  "#ff9f4d",
+  "#ff6f8a",
+  "#ff4dd6",
+  "#e94dff",
+  "#9f7cff",
+  "#78aaff",
+  "#4dc6ff",
+  "#45ff9f",
+  "#a8ff4d",
+  "#ff6edb",
+  "#ff4fb4",
+  "#f55f7b",
+  "#4dd8ff",
+  "#7f8fff",
 ];
 
 const PIECE_TEMPLATES = [
@@ -209,8 +221,17 @@ function skillCost(id) {
 }
 
 function rotationRevealDelay(rotIdx) {
-  if (rotIdx === 0 || state.skills.rotation <= 0) return 0;
-  return Math.max(24, 90 - state.skills.rotation * 3);
+  const base = 90;
+  return Math.max(28, base - state.skills.rotation * 3);
+}
+
+function pieceColor(value) {
+  if (typeof value !== "number" || value <= 0) return "#7ca2ff";
+  if (value < COLORS.length) return COLORS[value];
+  const hue = (value * 47 + state.linesThisRun * 2) % 360;
+  const sat = 74 + (value % 18);
+  const light = 52;
+  return `hsl(${hue}, ${sat}%, ${light}%)`;
 }
 
 function progressiveSkillLevel(level) {
@@ -463,22 +484,16 @@ function maybeSpawnPiece() {
     x: move.x,
     y: 0,
     rotIdx: move.rotIdx,
-    visualRotIdx: move.rotIdx,
-    rotationRevealMs: 0,
+    visualRotIdx:
+      PIECES[type].length > 1 ? (move.rotIdx + 1) % PIECES[type].length : move.rotIdx,
+    rotationRevealMs: rotationRevealDelay(move.rotIdx),
+    rotationRevealTotal: rotationRevealDelay(move.rotIdx),
     boardIndex: move.boardIndex,
     landingY: move.y,
     pieceValue: type + 1,
     targetRows: move.droppedRows,
     targetRowScore: move.rowsScore,
   };
-
-  const delay = rotationRevealDelay(move.rotIdx);
-  const canPreviewRotate = canPlace(selectedBoard.grid, type, 0, move.x, 0);
-  if (delay > 0 && move.rotIdx !== 0 && canPreviewRotate) {
-    state.active.visualRotIdx = 0;
-    state.active.rotationRevealMs = delay;
-    state.active.rotationRevealTotal = delay;
-  }
 }
 
 function lockActivePiece() {
@@ -713,7 +728,7 @@ function drawSingleBoard(board, layout, boardIndex) {
       const drawY = y + (r - HIDDEN_ROWS) * cellW;
       const drawX = x + c * cellW;
       if (v !== 0) {
-        ctx.fillStyle = COLORS[v];
+        ctx.fillStyle = pieceColor(v);
         ctx.fillRect(drawX + 1, drawY + 1, cellW - 2, cellW - 2);
       } else {
         ctx.fillStyle = "rgba(255,255,255,0.03)";
@@ -730,26 +745,32 @@ function drawSingleBoard(board, layout, boardIndex) {
     const drawRotIdx = Math.max(0, Math.min(PIECES[piece.type].length - 1, piece.visualRotIdx || 0));
     const revealPulse =
       isRevealing && piece.rotationRevealTotal
-        ? 0.1 + 0.2 * (1 - piece.rotationRevealMs / piece.rotationRevealTotal)
+        ? 0.12 + 0.22 * (1 - piece.rotationRevealMs / piece.rotationRevealTotal)
         : 0;
+    const activeColor = pieceColor(piece.pieceValue);
     const cells = PIECES[piece.type][drawRotIdx];
     const ghostY = getDropY(board.grid, piece.type, piece.rotIdx, piece.x);
     for (const [dx, dy] of cells) {
       const gx = piece.x + dx;
       const gy = ghostY + dy;
+      if (gx < 0 || gx >= COLS) continue;
       if (gy >= HIDDEN_ROWS && gy < ROWS) {
         const px = x + gx * cellW;
         const py = y + (gy - HIDDEN_ROWS) * cellW;
-        ctx.fillStyle = "rgba(118, 224, 255, 0.2)";
+        ctx.fillStyle = `rgba(118, 224, 255, 0.2)`;
         ctx.fillRect(px + 1, py + 1, cellW - 2, cellW - 2);
       }
       const px = piece.x + dx;
       const py = piece.y + dy;
+      if (px < 0 || px >= COLS) continue;
       if (py >= HIDDEN_ROWS && py < ROWS) {
         const fx = x + px * cellW;
         const fy = y + (py - HIDDEN_ROWS) * cellW;
-        ctx.fillStyle = COLORS[piece.pieceValue];
+        const alpha = isRevealing ? 0.68 : 1;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = activeColor;
         ctx.fillRect(fx + 1, fy + 1, cellW - 2, cellW - 2);
+        ctx.globalAlpha = 1;
         if (isRevealing) {
           ctx.fillStyle = `rgba(255,255,255,${revealPulse})`;
           ctx.fillRect(fx + 1, fy + 1, cellW - 2, cellW - 2);
