@@ -115,8 +115,6 @@ const state = {
 
 const MAX_PLACEMENT_LVL = 20;
 const MAX_ROTATION_LVL = 20;
-const EFFECTIVE_PLACEMENT_LVL = 4;
-const EFFECTIVE_ROTATION_LVL = 4;
 let PIECES = [];
 
 function buildPieceTemplates() {
@@ -208,6 +206,11 @@ function skillCost(id) {
     return (BASE_SKILL_COST + state.skills[id] * 20) * 10;
   }
   return (BASE_SKILL_COST + state.skills[id] * 20) * 20;
+}
+
+function progressiveSkillLevel(level) {
+  if (level <= 4) return level;
+  return 4 + (level - 4) * 0.2;
 }
 
 function stage() {
@@ -330,8 +333,8 @@ function scoreRotationPlacement(cells, gridAfter) {
 function scoreBoardMove(baseScore, boardInfo) {
   const metrics = boardMetrics(boardInfo.gridAfter);
   const clearWeight = [0, 220, 500, 900, 1200][boardInfo.cleared];
-  const placementLevel = Math.min(state.skills.placement, EFFECTIVE_PLACEMENT_LVL);
-  const rotationLevel = Math.min(state.skills.rotation, EFFECTIVE_ROTATION_LVL);
+  const placementLevel = progressiveSkillLevel(state.skills.placement);
+  const rotationLevel = progressiveSkillLevel(state.skills.rotation);
   const placementBias = placementLevel * 180;
   const rotationScore = boardInfo.rotationScore || { unstable: 0, sideLock: 0 };
   const rotationBias =
