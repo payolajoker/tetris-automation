@@ -208,6 +208,11 @@ function skillCost(id) {
   return (BASE_SKILL_COST + state.skills[id] * 20) * 20;
 }
 
+function rotationRevealDelay(rotIdx) {
+  if (rotIdx === 0 || state.skills.rotation <= 0) return 0;
+  return Math.max(24, 90 - state.skills.rotation * 3);
+}
+
 function progressiveSkillLevel(level) {
   if (level <= 4) return level;
   return 4 + (level - 4) * 0.2;
@@ -458,12 +463,22 @@ function maybeSpawnPiece() {
     x: move.x,
     y: 0,
     rotIdx: move.rotIdx,
+    visualRotIdx: move.rotIdx,
+    rotationRevealMs: 0,
     boardIndex: move.boardIndex,
     landingY: move.y,
     pieceValue: type + 1,
     targetRows: move.droppedRows,
     targetRowScore: move.rowsScore,
   };
+
+  const delay = rotationRevealDelay(move.rotIdx);
+  const canPreviewRotate = canPlace(selectedBoard.grid, type, 0, move.x, 0);
+  if (delay > 0 && move.rotIdx !== 0 && canPreviewRotate) {
+    state.active.visualRotIdx = 0;
+    state.active.rotationRevealMs = delay;
+    state.active.rotationRevealTotal = delay;
+  }
 }
 
 function lockActivePiece() {
@@ -536,6 +551,7 @@ function step() {
     maybeSpawnPiece();
     return;
   }
+  if (state.active.rotationRevealMs > 0) return;
   const board = state.boards[state.active.boardIndex];
   if (canPlace(board.grid, state.active.type, state.active.rotIdx, state.active.x, state.active.y + 1)) {
     state.active.y += 1;
@@ -554,6 +570,17 @@ function dropByTime(deltaMs) {
     state.dropAccumulator -= interval;
     step();
     moved++;
+  }
+}
+
+function updateRotationReveal(deltaMs) {
+  if (!state.active) return;
+  if (state.active.rotationRevealMs <= 0) return;
+
+  state.active.rotationRevealMs = Math.max(0, state.active.rotationRevealMs - deltaMs);
+  if (state.active.rotationRevealMs <= 0) {
+    state.active.visualRotIdx = state.active.rotIdx;
+    state.active.rotationRevealTotal = undefined;
   }
 }
 
@@ -699,7 +726,13 @@ function drawSingleBoard(board, layout, boardIndex) {
 
   if (state.active && state.active.boardIndex === boardIndex) {
     const piece = state.active;
-    const cells = PIECES[piece.type][piece.rotIdx];
+    const isRevealing = piece.rotationRevealMs > 0;
+    const drawRotIdx = Math.max(0, Math.min(PIECES[piece.type].length - 1, piece.visualRotIdx || 0));
+    const revealPulse =
+      isRevealing && piece.rotationRevealTotal
+        ? 0.1 + 0.2 * (1 - piece.rotationRevealMs / piece.rotationRevealTotal)
+        : 0;
+    const cells = PIECES[piece.type][drawRotIdx];
     const ghostY = getDropY(board.grid, piece.type, piece.rotIdx, piece.x);
     for (const [dx, dy] of cells) {
       const gx = piece.x + dx;
@@ -717,6 +750,10 @@ function drawSingleBoard(board, layout, boardIndex) {
         const fy = y + (py - HIDDEN_ROWS) * cellW;
         ctx.fillStyle = COLORS[piece.pieceValue];
         ctx.fillRect(fx + 1, fy + 1, cellW - 2, cellW - 2);
+        if (isRevealing) {
+          ctx.fillStyle = `rgba(255,255,255,${revealPulse})`;
+          ctx.fillRect(fx + 1, fy + 1, cellW - 2, cellW - 2);
+        }
       }
     }
   }
@@ -791,6 +828,7 @@ function render() {
 function gameLoop(ts) {
   const delta = Math.min(50, ts - (state.lastTs || ts));
   state.lastTs = ts;
+  updateRotationReveal(delta);
   dropByTime(delta);
   render();
   updateHud();
