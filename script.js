@@ -19,6 +19,7 @@ const ROUTING_MAX_LVL = 2;
 const BASE_SKILL_COST = 60;
 const MAX_BOARD_CELL_W = 34;
 const MIN_BOARD_CELL_W = 12;
+const DEBUG_BOARD_RESET = true;
 
 const COLORS = [
   "#0b1533",
@@ -199,20 +200,62 @@ function boardCount() {
   return 1 + Math.min(ROUTING_MAX_LVL, Math.max(0, state.skills.routing));
 }
 
-function resetBoards() {
-  const count = boardCount();
+function boardCountForReset(options = {}) {
+  if (options.forceSingleBoard) return 1;
+  return boardCount();
+}
+
+function boardHasBlocks(board) {
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (board.grid[y][x] !== 0) return true;
+    }
+  }
+  return false;
+}
+
+function validateBoardFreshState(context, expectedCount) {
+  if (!DEBUG_BOARD_RESET) return;
+  if (!Array.isArray(state.boards) || state.boards.length !== expectedCount) {
+    console.info(`[board-reset:${context}] unexpected board count`, {
+      expected: expectedCount,
+      actual: Array.isArray(state.boards) ? state.boards.length : 0,
+    });
+    state.boards = [];
+    for (let i = 0; i < expectedCount; i++) {
+      state.boards.push(createBoard());
+    }
+  }
+
+  let dirty = false;
+  state.boards.forEach((board, idx) => {
+    if (boardHasBlocks(board)) {
+      dirty = true;
+      console.info(`[board-reset:${context}] board not clean`, idx);
+    }
+  });
+
+  if (dirty) {
+    console.warn(`[board-reset:${context}] hard-clearing non-empty boards`);
+    state.boards = state.boards.map(() => createBoard());
+  }
+}
+
+function resetBoards(options = {}) {
+  const count = boardCountForReset(options);
   state.boards = [];
   for (let i = 0; i < count; i++) {
     state.boards.push(createBoard());
   }
+  validateBoardFreshState("resetBoards", count);
 }
 
-function resetRunProgress() {
+function resetRunProgress(options = {}) {
   state.linesThisRun = 0;
   state.active = null;
   state.dropAccumulator = 0;
   state.boardLayouts = [];
-  resetBoards();
+  resetBoards(options);
 }
 
 function skillCost(id) {
@@ -672,7 +715,8 @@ function triggerGameOver() {
   state.gameOverLock = true;
   state.toasts = [];
   state.active = null;
-  resetRunProgress();
+  resetRunProgress({ forceSingleBoard: true });
+  validateBoardFreshState("triggerGameOver", 1);
   state.gameOverLock = false;
   updateHud();
 }
@@ -712,6 +756,13 @@ function drawSingleBoard(board, layout, boardIndex) {
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 0.5, y + 0.5, boardW - 1, boardH - 1);
 
+  const isFilled = (r, c) =>
+    r >= HIDDEN_ROWS &&
+    r < ROWS &&
+    c >= 0 &&
+    c < COLS &&
+    board.grid[r][c] !== 0;
+
   for (let r = HIDDEN_ROWS; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const v = board.grid[r][c];
@@ -728,6 +779,34 @@ function drawSingleBoard(board, layout, boardIndex) {
       }
     }
   }
+
+  ctx.strokeStyle = "rgba(255,255,255,0.58)";
+  ctx.lineWidth = Math.max(1, Math.floor(cellW * 0.08));
+  ctx.beginPath();
+  for (let r = HIDDEN_ROWS; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!isFilled(r, c)) continue;
+      const drawY = y + (r - HIDDEN_ROWS) * cellW;
+      const drawX = x + c * cellW;
+      if (c === 0 || !isFilled(r, c - 1)) {
+        ctx.moveTo(drawX, drawY);
+        ctx.lineTo(drawX, drawY + cellW);
+      }
+      if (c === COLS - 1 || !isFilled(r, c + 1)) {
+        ctx.moveTo(drawX + cellW, drawY);
+        ctx.lineTo(drawX + cellW, drawY + cellW);
+      }
+      if (r === HIDDEN_ROWS || !isFilled(r - 1, c)) {
+        ctx.moveTo(drawX, drawY);
+        ctx.lineTo(drawX + cellW, drawY);
+      }
+      if (r === ROWS - 1 || !isFilled(r + 1, c)) {
+        ctx.moveTo(drawX, drawY + cellW);
+        ctx.lineTo(drawX + cellW, drawY + cellW);
+      }
+    }
+  }
+  ctx.stroke();
 
   if (state.active && state.active.boardIndex === boardIndex) {
     const piece = state.active;
@@ -773,16 +852,56 @@ function drawSingleBoard(board, layout, boardIndex) {
           ctx.globalAlpha = alpha;
           ctx.fillStyle = activeColor;
           ctx.fillRect(fx, fy, cellW, cellW);
-          ctx.strokeStyle = `rgba(255,255,255,${0.25 + alpha * 0.45})`;
-          ctx.lineWidth = Math.max(1, cellW * 0.06);
-          ctx.strokeRect(fx + 0.5, fy + 0.5, cellW - 1, cellW - 1);
           ctx.globalAlpha = 1;
         }
       }
     };
 
+    const drawPieceOutline = (cells, alpha, offsetX = 0) => {
+      const pieceSet = new Set();
+      for (const [dx, dy] of cells) {
+        pieceSet.add(`${piece.x + dx},${piece.y + dy}`);
+      }
+
+      const drawOffsetX = offsetX * cellW;
+      ctx.strokeStyle = `rgba(255,255,255,${Math.max(0.14, 0.45 * alpha)})`;
+      ctx.lineWidth = Math.max(1, Math.floor(cellW * 0.11));
+      ctx.beginPath();
+      for (const [dx, dy] of cells) {
+        const px = piece.x + dx;
+        const py = piece.y + dy;
+        if (py < HIDDEN_ROWS || py >= ROWS) continue;
+
+        const drawX = x + px * cellW + drawOffsetX;
+        const drawY = y + (py - HIDDEN_ROWS) * cellW;
+
+        if (px === 0 || !pieceSet.has(`${px - 1},${py}`)) {
+          ctx.moveTo(drawX, drawY);
+          ctx.lineTo(drawX, drawY + cellW);
+        }
+        if (px === COLS - 1 || !pieceSet.has(`${px + 1},${py}`)) {
+          ctx.moveTo(drawX + cellW, drawY);
+          ctx.lineTo(drawX + cellW, drawY + cellW);
+        }
+        if (py === HIDDEN_ROWS || !pieceSet.has(`${px},${py - 1}`)) {
+          ctx.moveTo(drawX, drawY);
+          ctx.lineTo(drawX + cellW, drawY);
+        }
+        if (py === ROWS - 1 || !pieceSet.has(`${px},${py + 1}`)) {
+          ctx.moveTo(drawX, drawY + cellW);
+          ctx.lineTo(drawX + cellW, drawY + cellW);
+        }
+      }
+      ctx.stroke();
+    };
+
+    const drawPieceWithOutline = (cells, alpha, offsetX = 0, outlineAlpha = 0.7) => {
+      drawPieceCells(cells, alpha, offsetX);
+      drawPieceOutline(cells, outlineAlpha, offsetX);
+    };
+
     drawGhost();
-    drawPieceCells(previewCells, isRevealing ? 0.8 : 1, 0);
+    drawPieceWithOutline(previewCells, isRevealing ? 0.8 : 1, 0, isRevealing ? 0.35 : 0.75);
     if (isRevealing) {
       ctx.fillStyle = `rgba(255,255,255,${revealPulse})`;
       for (const [dx, dy] of previewCells) {
@@ -798,7 +917,12 @@ function drawSingleBoard(board, layout, boardIndex) {
     }
 
     if (isRevealing && previewCells !== finalCells) {
-      drawPieceCells(finalCells, 0.45 + revealProgress * 0.3, revealJitter / cellW);
+      drawPieceWithOutline(
+        finalCells,
+        0.45 + revealProgress * 0.3,
+        revealJitter / cellW,
+        0.4 + revealProgress * 0.25
+      );
     }
   }
 }
