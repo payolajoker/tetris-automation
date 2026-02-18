@@ -14,6 +14,7 @@ const ROWS = VISIBLE_ROWS + HIDDEN_ROWS;
 
 const BASE_DROP_MS = 17;
 const MIN_DROP_MS = 3;
+const DROP_ACCEL_PER_STAGE = 0.93;
 const ROUTING_MAX_LVL = 2;
 const BASE_SKILL_COST = 60;
 const MAX_BOARD_CELL_W = 34;
@@ -221,8 +222,8 @@ function skillCost(id) {
 }
 
 function rotationRevealDelay(rotIdx) {
-  const base = 90;
-  return Math.max(28, base - state.skills.rotation * 3);
+  const base = 100;
+  return Math.max(32, base - state.skills.rotation * 3);
 }
 
 function pieceColor(value) {
@@ -244,7 +245,8 @@ function stage() {
 }
 
 function dropInterval() {
-  return BASE_DROP_MS;
+  const s = stage();
+  return Math.max(MIN_DROP_MS, Math.floor(BASE_DROP_MS * Math.pow(DROP_ACCEL_PER_STAGE, s - 1)));
 }
 
 function enqueuePiece() {
@@ -705,7 +707,7 @@ function drawSingleBoard(board, layout, boardIndex) {
   const { x, y, cellW, boardW, boardH } = layout;
   drawBoardBackground(x, y, boardW, boardH);
 
-  ctx.strokeStyle = "rgba(110,146,235,0.45)";
+  ctx.strokeStyle = "rgba(110,146,235,0.18)";
   ctx.lineWidth = 1;
   for (let c = 0; c <= COLS; c++) {
     const lineX = x + c * cellW;
@@ -729,11 +731,11 @@ function drawSingleBoard(board, layout, boardIndex) {
       const drawX = x + c * cellW;
       if (v !== 0) {
         ctx.fillStyle = pieceColor(v);
-        ctx.fillRect(drawX + 1, drawY + 1, cellW - 2, cellW - 2);
+        ctx.fillRect(drawX, drawY, cellW, cellW);
       } else {
         ctx.fillStyle = "rgba(255,255,255,0.03)";
         if ((r + c) % 2 === 0) {
-          ctx.fillRect(drawX + 1, drawY + 1, cellW - 2, cellW - 2);
+          ctx.fillRect(drawX, drawY, cellW, cellW);
         }
       }
     }
@@ -743,39 +745,72 @@ function drawSingleBoard(board, layout, boardIndex) {
     const piece = state.active;
     const isRevealing = piece.rotationRevealMs > 0;
     const drawRotIdx = Math.max(0, Math.min(PIECES[piece.type].length - 1, piece.visualRotIdx || 0));
+    const finalRotIdx = Math.max(0, Math.min(PIECES[piece.type].length - 1, piece.rotIdx || 0));
     const revealPulse =
       isRevealing && piece.rotationRevealTotal
         ? 0.12 + 0.22 * (1 - piece.rotationRevealMs / piece.rotationRevealTotal)
         : 0;
     const activeColor = pieceColor(piece.pieceValue);
-    const cells = PIECES[piece.type][drawRotIdx];
+    const previewCells = PIECES[piece.type][drawRotIdx];
+    const finalCells = PIECES[piece.type][finalRotIdx];
     const ghostY = getDropY(board.grid, piece.type, piece.rotIdx, piece.x);
-    for (const [dx, dy] of cells) {
-      const gx = piece.x + dx;
-      const gy = ghostY + dy;
-      if (gx < 0 || gx >= COLS) continue;
-      if (gy >= HIDDEN_ROWS && gy < ROWS) {
-        const px = x + gx * cellW;
-        const py = y + (gy - HIDDEN_ROWS) * cellW;
-        ctx.fillStyle = `rgba(118, 224, 255, 0.2)`;
-        ctx.fillRect(px + 1, py + 1, cellW - 2, cellW - 2);
-      }
-      const px = piece.x + dx;
-      const py = piece.y + dy;
-      if (px < 0 || px >= COLS) continue;
-      if (py >= HIDDEN_ROWS && py < ROWS) {
-        const fx = x + px * cellW;
-        const fy = y + (py - HIDDEN_ROWS) * cellW;
-        const alpha = isRevealing ? 0.68 : 1;
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = activeColor;
-        ctx.fillRect(fx + 1, fy + 1, cellW - 2, cellW - 2);
-        ctx.globalAlpha = 1;
-        if (isRevealing) {
-          ctx.fillStyle = `rgba(255,255,255,${revealPulse})`;
-          ctx.fillRect(fx + 1, fy + 1, cellW - 2, cellW - 2);
+    const revealProgress =
+      isRevealing && piece.rotationRevealTotal
+        ? 1 - piece.rotationRevealMs / piece.rotationRevealTotal
+        : 1;
+    const revealJitter = Math.sin(revealProgress * Math.PI * 3) * (cellW * 0.04);
+
+    const drawGhost = () => {
+      for (const [dx, dy] of previewCells) {
+        const gx = piece.x + dx;
+        const gy = ghostY + dy;
+        if (gx < 0 || gx >= COLS) continue;
+        if (gy >= HIDDEN_ROWS && gy < ROWS) {
+          const px = x + gx * cellW;
+          const py = y + (gy - HIDDEN_ROWS) * cellW;
+          ctx.fillStyle = `rgba(118, 224, 255, 0.22)`;
+          ctx.fillRect(px, py, cellW, cellW);
         }
       }
+    };
+
+    const drawPieceCells = (cells, alpha, offsetX = 0) => {
+      for (const [dx, dy] of cells) {
+        const px = piece.x + dx + offsetX;
+        const py = piece.y + dy;
+        if (px < 0 || px >= COLS) continue;
+        if (py >= HIDDEN_ROWS && py < ROWS) {
+          const fx = x + px * cellW;
+          const fy = y + (py - HIDDEN_ROWS) * cellW;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = activeColor;
+          ctx.fillRect(fx, fy, cellW, cellW);
+          ctx.strokeStyle = `rgba(255,255,255,${0.25 + alpha * 0.45})`;
+          ctx.lineWidth = Math.max(1, cellW * 0.06);
+          ctx.strokeRect(fx + 0.5, fy + 0.5, cellW - 1, cellW - 1);
+          ctx.globalAlpha = 1;
+        }
+      }
+    };
+
+    drawGhost();
+    drawPieceCells(previewCells, isRevealing ? 0.8 : 1, 0);
+    if (isRevealing) {
+      ctx.fillStyle = `rgba(255,255,255,${revealPulse})`;
+      for (const [dx, dy] of previewCells) {
+        const px = piece.x + dx;
+        const py = piece.y + dy;
+        if (px < 0 || px >= COLS) continue;
+        if (py >= HIDDEN_ROWS && py < ROWS) {
+          const fx = x + px * cellW;
+          const fy = y + (py - HIDDEN_ROWS) * cellW;
+          ctx.fillRect(fx, fy, cellW, cellW);
+        }
+      }
+    }
+
+    if (isRevealing && previewCells !== finalCells) {
+      drawPieceCells(finalCells, 0.45 + revealProgress * 0.3, revealJitter / cellW);
     }
   }
 }
