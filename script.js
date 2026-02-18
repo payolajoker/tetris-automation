@@ -185,7 +185,7 @@ function resetRunProgress() {
 }
 
 function skillCost(id) {
-  return BASE_SKILL_COST + state.skills[id] * 20;
+  return (BASE_SKILL_COST + state.skills[id] * 20) * 20;
 }
 
 function stage() {
@@ -383,7 +383,7 @@ function chooseMove(type) {
     const candidate = evaluateBoardChoice(board, type);
     if (!candidate) continue;
 
-    const routingBoost = i * Math.max(0, state.skills.routing) * 2;
+    const routingBoost = i * Math.max(0, state.skills.routing) * 100;
     const score = candidate.score + routingBoost;
     if (!best || score > best.score) {
       best = { ...candidate, boardIndex: i, board: undefined, score };
@@ -459,7 +459,7 @@ function lockActivePiece() {
   const movedRows = state.active.landingY - state.active.y;
   const dropReward = Math.max(1, Math.floor((Math.abs(movedRows) + state.active.y) / 2));
   const lineCount = clearResult.clearedRows.length;
-  const lineBonuses = [0, 4, 9, 14, 24];
+  const lineBonuses = [0, 40, 90, 140, 240];
   const lineBonus = lineCount > 0 ? lineBonuses[lineCount] : 0;
   const creditGain = dropReward + lineBonus;
   state.credits += creditGain;
