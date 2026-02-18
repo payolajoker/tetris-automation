@@ -211,6 +211,7 @@ function resetRunProgress() {
   state.linesThisRun = 0;
   state.active = null;
   state.dropAccumulator = 0;
+  state.boardLayouts = [];
   resetBoards();
 }
 
@@ -707,22 +708,9 @@ function drawSingleBoard(board, layout, boardIndex) {
   const { x, y, cellW, boardW, boardH } = layout;
   drawBoardBackground(x, y, boardW, boardH);
 
-  ctx.strokeStyle = "rgba(110,146,235,0.18)";
+  ctx.strokeStyle = "rgba(110,146,235,0.55)";
   ctx.lineWidth = 1;
-  for (let c = 0; c <= COLS; c++) {
-    const lineX = x + c * cellW;
-    ctx.beginPath();
-    ctx.moveTo(lineX, y);
-    ctx.lineTo(lineX, y + boardH);
-    ctx.stroke();
-  }
-  for (let r = 0; r <= VISIBLE_ROWS; r++) {
-    const lineY = y + r * cellW;
-    ctx.beginPath();
-    ctx.moveTo(x, lineY);
-    ctx.lineTo(x + boardW, lineY);
-    ctx.stroke();
-  }
+  ctx.strokeRect(x + 0.5, y + 0.5, boardW - 1, boardH - 1);
 
   for (let r = HIDDEN_ROWS; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
