@@ -76,9 +76,9 @@ const PIECE_TEMPLATES = [
 ];
 
 const CHAOS_TEMPLATES = [
-  { stage: 5, templates: [[[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]] },
-  { stage: 8, templates: [[[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]] },
-  { stage: 11, templates: [[[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]]] },
+  { stage: 2, templates: [[[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]], copyStep: 3 },
+  { stage: 3, templates: [[[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]], copyStep: 3 },
+  { stage: 4, templates: [[[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]], copyStep: 3 },
 ];
 
 const state = {
@@ -109,7 +109,12 @@ function buildPieceTemplates() {
   const templates = PIECE_TEMPLATES.slice();
   const s = stage();
   for (const entry of CHAOS_TEMPLATES) {
-    if (s >= entry.stage) templates.push(...entry.templates);
+    if (s >= entry.stage) {
+      const copyCount = Math.min(entry.copyStep, 1 + Math.floor((s - entry.stage) / 2));
+      for (let i = 0; i < copyCount; i++) {
+        templates.push(...entry.templates);
+      }
+    }
   }
   return templates;
 }
@@ -193,8 +198,7 @@ function stage() {
 }
 
 function dropInterval() {
-  const s = stage();
-  return Math.max(MIN_DROP_MS, BASE_DROP_MS - (s - 1) * 3);
+  return BASE_DROP_MS;
 }
 
 function enqueuePiece() {
