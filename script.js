@@ -76,9 +76,21 @@ const PIECE_TEMPLATES = [
 ];
 
 const CHAOS_TEMPLATES = [
-  { stage: 2, templates: [[[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]], copyStep: 3 },
-  { stage: 3, templates: [[[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]], copyStep: 3 },
-  { stage: 4, templates: [[[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]], copyStep: 3 },
+  {
+    stage: 2,
+    templates: [[[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]],
+    copyStep: 3,
+  },
+  {
+    stage: 3,
+    templates: [[[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]]],
+    copyStep: 3,
+  },
+  {
+    stage: 4,
+    templates: [[[0, 0], [2, 0], [0, 1], [1, 1], [2, 1]]],
+    copyStep: 3,
+  },
 ];
 
 const state = {
