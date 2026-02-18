@@ -1,0 +1,45 @@
+<!doctype html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Neural Tetris</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="layout">
+      <header>
+        <h1>Neural Tetris</h1>
+        <p>Every block is autonomous. Evolve the pilot with credits.</p>
+      </header>
+
+      <div id="hud">
+        <div>Phase <span id="stageText">1</span></div>
+        <div>Score <span id="scoreText">0</span></div>
+        <div>Credit <span id="coinText">0</span></div>
+        <div>Bursts <span id="lineText">0</span></div>
+      </div>
+
+      <canvas id="gameCanvas" width="1200" height="760"></canvas>
+
+      <div id="skills">
+      <div>Neural Upgrades</div>
+      <button data-skill="placement" class="skill-btn">
+        <span class="skill-name">Placement Logic</span>
+        <span class="skill-row">Lv <span id="placementLvl">0</span> - Credit <span id="placementCost">60</span></span>
+      </button>
+      <button data-skill="rotation" class="skill-btn">
+        <span class="skill-name">Rotation Logic</span>
+        <span class="skill-row">Lv <span id="rotationLvl">0</span> - Credit <span id="rotationCost">60</span></span>
+      </button>
+      <button data-skill="routing" class="skill-btn">
+        <span class="skill-name">Routing Logic</span>
+        <span class="skill-row">Lv <span id="routingLvl">0</span> - Credit <span id="routingCost">60</span></span>
+      </button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+

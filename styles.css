@@ -1,0 +1,192 @@
+:root {
+  --bg: #080d1e;
+  --panel: #111a34;
+  --panel-2: #16214a;
+  --line: #2f3f72;
+  --text: #edf2ff;
+  --muted: #a8b6dd;
+  --accent: #47d0ff;
+  --good: #76ff9d;
+  --warn: #ffe566;
+  --title: #f6f8ff;
+  --chip: #22305f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 0 0, rgba(43, 76, 156, 0.38), transparent 58%),
+    radial-gradient(circle at 100% 16%, rgba(65, 35, 124, 0.2), transparent 58%),
+    radial-gradient(circle at 50% 100%, rgba(0, 0, 0, 0.35), transparent 50%),
+    var(--bg);
+  color: var(--text);
+  font-family: "Trebuchet MS", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Arial, sans-serif;
+  min-height: 100vh;
+}
+
+#layout {
+  width: min(1280px, 95vw);
+  margin: 0 auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+header h1 {
+  margin: 0 0 4px;
+  color: var(--title);
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 8px rgba(22, 34, 84, 0.8);
+}
+
+header p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+#hud {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid #2b3a6a;
+  background: linear-gradient(160deg, rgba(17, 26, 52, 0.95), rgba(11, 20, 44, 0.78));
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+}
+
+#hud div {
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(15, 26, 55, 0.7);
+  border: 1px solid #263a73;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.93rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #d6e0ff;
+}
+
+#hud span {
+  display: block;
+  margin-top: 4px;
+  color: #f4f7ff;
+  font-size: 1.12rem;
+  font-family: "Consolas", "Menlo", "Courier New", monospace;
+  letter-spacing: 0.01em;
+}
+
+#skills {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #2b3a6a;
+  background: linear-gradient(180deg, rgba(17, 26, 52, 0.95), rgba(21, 33, 62, 0.74));
+  margin-bottom: 10px;
+}
+
+#skills > div {
+  color: #d3dcff;
+  font-weight: 700;
+  margin: 0 0 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.86rem;
+}
+
+#skills button.skill-btn {
+  display: block;
+  margin-top: 6px;
+  width: 100%;
+  position: relative;
+  text-align: left;
+  border: 1px solid #344a88;
+  background: linear-gradient(180deg, #151f3d, #111a36);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+#skills button .skill-name {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+#skills button .skill-row {
+  font-size: 0.88rem;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+#skills button.skill-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#skills button.skill-btn:not(:disabled):hover {
+  background: linear-gradient(180deg, #1b2f65, #16214b);
+  border-color: #4f68b9;
+  transform: translateY(-1px);
+}
+
+#gameCanvas {
+  width: 100%;
+  margin-top: 8px;
+  border: 2px solid #31457b;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #061126, #0a1632);
+  display: block;
+  height: auto;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 12px 22px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 960px) {
+  #layout {
+    width: 100%;
+    padding: 8px;
+  }
+
+  #hud {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #skills button {
+    font-size: 13px;
+  }
+
+  body {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 640px) {
+  #hud {
+    grid-template-columns: 1fr;
+  }
+
+  #gameCanvas {
+    margin-top: 4px;
+  }
+
+  #skills {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+  }
+}
